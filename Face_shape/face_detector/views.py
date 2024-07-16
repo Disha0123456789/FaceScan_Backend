@@ -24,6 +24,10 @@ def upload_image(request):
         if not image_file:
             return JsonResponse({'error': 'No image uploaded'}, status=400)
 
+        # Check file format
+        if not image_file.name.endswith(('.jpg', '.jpeg', '.png')):
+            return JsonResponse({'error': 'Unsupported image format'}, status=400)
+            
         # Save the uploaded image temporarily
         temp_image_path = 'temp_image.jpg'
         with open(temp_image_path, 'wb') as f:
