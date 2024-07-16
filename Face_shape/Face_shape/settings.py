@@ -25,7 +25,13 @@ SECRET_KEY = 'django-insecure-mxap26$g$#-!kt-+z7*^d7z18kpc7no@lm&5lr$_2ge6ysrp3x
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'divineconnection.co.in',
+    'www.divineconnection.co.in',
+]
+
 
 
 # Application definition
@@ -54,6 +60,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'Face_shape.urls'
+#CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Add your frontend URL here
     "https://divineconnection.co.in",  # Your frontend URL
