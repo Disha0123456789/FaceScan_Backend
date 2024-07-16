@@ -6,6 +6,10 @@ import numpy as np
 import os
 import json
 import random
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,14 +24,17 @@ landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 @csrf_exempt
 def upload_image(request):
     if request.method == 'POST':
+        logger.info("Received a POST request.")
         image_file = request.FILES.get('imagefile', None)
         if not image_file:
+            logger.error('No image uploaded.')
             return JsonResponse({'error': 'No image uploaded'}, status=400)
 
         # Check file format
         if not image_file.name.endswith(('.jpg', '.jpeg', '.png')):
+            logger.error('Unsupported image format.')
             return JsonResponse({'error': 'Unsupported image format'}, status=400)
-            
+
         # Save the uploaded image temporarily
         temp_image_path = 'temp_image.jpg'
         with open(temp_image_path, 'wb') as f:
@@ -36,10 +43,16 @@ def upload_image(request):
 
         # Read the image with OpenCV
         image = cv2.imread(temp_image_path)
+        if image is None:
+            logger.error('Failed to read image.')
+            os.remove(temp_image_path)
+            return JsonResponse({'error': 'Failed to read image'}, status=400)
 
         # Detect faces and landmarks
         faces, landmarks_list = detect_faces_landmarks(image)
         if not landmarks_list:
+            logger.error('No face detected.')
+            os.remove(temp_image_path)
             return JsonResponse({'error': 'No face detected'}, status=400)
 
         # Calculate face shape for the first detected face
@@ -48,20 +61,29 @@ def upload_image(request):
 
         # Get predictions from shapes.json
         predictions = get_predictions(face_shape)
+        os.remove(temp_image_path)  # Clean up temp file
+
         if predictions:
             return JsonResponse(predictions)
         else:
+            logger.error('Face shape not found in shapes.json.')
             return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
 
+    logger.error('Invalid request method.')
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def detect_faces_landmarks(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    try:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    except Exception as e:
+        return [], [], f"Error converting image to gray: {str(e)}"
+    
     faces = face_detector(gray)
     landmarks_list = []
     for face in faces:
         landmarks = landmark_predictor(gray, face)
         landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+    
     return faces, landmarks_list
 
 def calculate_face_shape(landmarks, image):
