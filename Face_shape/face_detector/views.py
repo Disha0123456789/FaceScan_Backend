@@ -85,13 +85,21 @@ def detect_faces_landmarks(image):
     if image is None:
         logger.error("Image is None, possibly due to incorrect file path or format.")
         raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+    
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        logger.info(f"Converted image to grayscale: {gray.shape}")
+        logger.info(f"Converted image to grayscale: {gray.shape}, dtype: {gray.dtype}")
     except Exception as e:
         logger.error(f"Error converting image to gray: {e}")
         raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
+
+    # Check image type and dtype
+    logger.info(f"Image type: {type(gray)}, dtype: {gray.dtype}")
     
+    if gray.dtype != np.uint8:
+        logger.error("Image is not 8bit gray")
+        raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+
     faces = face_detector(gray)
     logger.info(f"Detected {len(faces)} faces")
     landmarks_list = []
@@ -116,13 +124,13 @@ def calculate_face_shape(landmarks, image):
 
     if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
         return "Heart"
-    elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale factor) and standardized_height > standardized_cheekbones_width + (17 * scale factor):
         return "Oblong"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale factor):
         return "Square"
-    elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
+    elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale factor) and standardized_height > standardized_cheekbones_width + (20 * scale factor):
         return "Oval"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor):
         return "Round"
     else:
         return "Unknown"
