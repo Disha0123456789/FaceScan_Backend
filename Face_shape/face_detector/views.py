@@ -122,6 +122,11 @@ def get_predictions(face_shape):
     with open(shapes_json_path) as f:
         shapes_data = json.load(f)
 
+    # Ensure that shapes_data is a dictionary and has the 'shapes' key
+    if not isinstance(shapes_data, dict) or 'shapes' not in shapes_data:
+        logger.error("Invalid shapes.json format.")
+        return None
+
     for shape_entry in shapes_data['shapes']:
         if shape_entry['shape'] == face_shape:
             prediction_type = random.choice(list(shape_entry['personal_traits'].keys()))
