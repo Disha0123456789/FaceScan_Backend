@@ -122,13 +122,13 @@ def calculate_face_shape(landmarks, image):
 
     if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
         return "Heart"
-    elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
         return "Oblong"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
         return "Square"
-    elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale factor) and standardized_height > standardized_cheekbones_width + (20 * scale factor):
+    elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
         return "Oval"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
         return "Round"
     else:
         return "Unknown"
