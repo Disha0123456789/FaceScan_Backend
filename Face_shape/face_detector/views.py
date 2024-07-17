@@ -102,13 +102,24 @@ def detect_faces_landmarks(image):
 
         landmarks_list = []
         for (x, y, w, h) in faces:
+            logger.info(f"Processing face with coordinates: x={x}, y={y}, w={w}, h={h}")
             rect = dlib.rectangle(x, y, x + w, y + h)
+            logger.info(f"Created dlib.rectangle: {rect}")
+            
+            # Check if rectangle coordinates are valid
+            if rect.left() < 0 or rect.top() < 0 or rect.right() > gray.shape[1] or rect.bottom() > gray.shape[0]:
+                logger.error(f"Rectangle coordinates out of bounds: {rect}")
+                continue  # Skip this face
+            
             landmarks = landmark_predictor(gray, rect)
+            logger.info(f"Predicted landmarks: {[(p.x, p.y) for p in landmarks.parts()]}")
             landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+
         return faces, landmarks_list
     except Exception as e:
         logger.error(f"Error in face detection or landmark prediction: {e}")
         raise RuntimeError("Error in face detection or landmark prediction")
+
 
 def calculate_face_shape(landmarks, image):
     jawline_points = np.array(landmarks[4:13])
