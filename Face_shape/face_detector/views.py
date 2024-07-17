@@ -115,8 +115,14 @@ def detect_faces_landmarks(image):
                 logger.info("Calling landmark_predictor")
                 # Convert image from BGR (OpenCV default) to RGB
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                logger.info(f"Image RGB shape: {image_rgb.shape}, dtype: {image_rgb.dtype}")
+
+                # Check if the image is 8-bit RGB
+                if image_rgb.dtype != np.uint8 or image_rgb.shape[2] != 3:
+                    logger.error("Image RGB is not 8-bit or not a 3 channel image.")
+                    raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+
                 landmarks = landmark_predictor(image_rgb, rect)
-                #landmarks = landmark_predictor(image, rect)
                 logger.info("Landmark prediction successful")
                 landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
             except Exception as e:
@@ -127,8 +133,6 @@ def detect_faces_landmarks(image):
     except Exception as e:
         logger.error(f"Error in face detection or landmark prediction: {e}")
         raise RuntimeError("Error in face detection or landmark prediction")
-
-
 
 def calculate_face_shape(landmarks, image):
     jawline_points = np.array(landmarks[4:13])
@@ -156,8 +160,8 @@ def calculate_face_shape(landmarks, image):
     elif (standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and 
           standardized_height > standardized_cheekbones_width + (20 * scale_factor)):
         return "Oval"
-    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and 
-          standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor)):
+    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and 
+          standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor)):
         return "Round"
     else:
         return "Unknown"
@@ -174,5 +178,5 @@ def get_predictions(face_shape):
             for category, predictions in shape_entry.items():
                 if category != 'face_shape':
                     selected_predictions[category] = predictions[prediction_type]
-            return selected_predictions
+            return selected_predictions             
     return None
