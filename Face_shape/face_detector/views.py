@@ -32,7 +32,7 @@ def upload_image(request):
             return JsonResponse({'error': 'No image uploaded'}, status=400)
 
         # Check file format
-        if not image_file.name.endswith(('.jpg', '.jpeg', '.png')):
+        if not image_file.name.lower().endswith(('.jpg', '.jpeg', '.png')):
             logger.error('Unsupported image format.')
             return JsonResponse({'error': 'Unsupported image format'}, status=400)
 
@@ -50,7 +50,7 @@ def upload_image(request):
             return JsonResponse({'error': 'Failed to read image'}, status=400)
 
         logger.info(f"Image shape: {image.shape}")
-        
+
         # Detect faces and landmarks
         try:
             faces, landmarks_list = detect_faces_landmarks(image)
@@ -84,16 +84,16 @@ def detect_faces_landmarks(image):
     if image is None:
         logger.error("Image is None, possibly due to incorrect file path or format.")
         raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
-    
+
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         logger.info(f"Converted image to grayscale: {gray.shape}, dtype: {gray.dtype}")
-    except Exception as e:
-        logger.error(f"Error converting image to gray: {e}")
-        raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
 
-    try:
-        faces = face_detector.detectMultiScale(gray, 1.1, 4)
+        if gray.dtype != np.uint8 or len(gray.shape) != 2:
+            logger.error("Gray image is not 8-bit or not a single channel.")
+            raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+
+        faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
         logger.info(f"Faces detected: {len(faces)}")
         if len(faces) == 0:
             raise RuntimeError("No faces detected")
