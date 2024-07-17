@@ -73,10 +73,14 @@ def upload_image(request):
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def detect_faces_landmarks(image):
+    if image is None:
+        logger.error("Image is None, possibly due to incorrect file path or format.")
+        raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     except Exception as e:
-        return [], [], f"Error converting image to gray: {str(e)}"
+        logger.error(f"Error converting image to gray: {e}")
+        raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
     
     faces = face_detector(gray)
     landmarks_list = []
