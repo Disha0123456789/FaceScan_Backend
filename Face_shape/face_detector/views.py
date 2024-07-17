@@ -104,21 +104,32 @@ def detect_faces_landmarks(image):
         for (x, y, w, h) in faces:
             logger.info(f"Processing face with coordinates: x={x}, y={y}, w={w}, h={h}")
             rect = dlib.rectangle(x, y, x + w, y + h)
-            logger.info(f"Created dlib.rectangle: {rect}")
-            
+            logger.info(f"Created dlib.rectangle: [{rect.left()}, {rect.top()}, {rect.right()}, {rect.bottom()}]")
+
             # Check if rectangle coordinates are valid
             if rect.left() < 0 or rect.top() < 0 or rect.right() > gray.shape[1] or rect.bottom() > gray.shape[0]:
-                logger.error(f"Rectangle coordinates out of bounds: {rect}")
+                logger.error(f"Rectangle coordinates out of bounds: [{rect.left()}, {rect.top()}, {rect.right()}, {rect.bottom()}]")
                 continue  # Skip this face
-            
-            landmarks = landmark_predictor(gray, rect)
-            logger.info(f"Predicted landmarks: {[(p.x, p.y) for p in landmarks.parts()]}")
-            landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+
+            # Ensure `gray` is 8-bit grayscale before passing to landmark_predictor
+            if gray.dtype != np.uint8 or len(gray.shape) != 2:
+                logger.error("Invalid grayscale image format.")
+                raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+
+            try:
+                logger.info("Calling landmark_predictor")
+                landmarks = landmark_predictor(gray, rect)
+                logger.info("Landmark prediction successful")
+                landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+            except Exception as e:
+                logger.error(f"Error in landmark prediction: {e}")
+                raise RuntimeError("Error in face detection or landmark prediction")
 
         return faces, landmarks_list
     except Exception as e:
         logger.error(f"Error in face detection or landmark prediction: {e}")
         raise RuntimeError("Error in face detection or landmark prediction")
+
 
 
 def calculate_face_shape(landmarks, image):
