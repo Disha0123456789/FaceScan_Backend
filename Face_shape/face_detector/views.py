@@ -18,7 +18,7 @@ haarcascade_path = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
 shapes_json_path = os.path.join(BASE_DIR, 'shapes.json')
 
 # Load models
-face_detector = dlib.get_frontal_face_detector()
+face_detector = cv2.CascadeClassifier(haarcascade_path)
 landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
 @csrf_exempt
@@ -91,11 +91,15 @@ def detect_faces_landmarks(image):
         raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
     
     try:
-        faces = face_detector(gray)
+        faces = face_detector.detectMultiScale(gray, 1.1, 4)
         logger.info(f"Faces detected: {len(faces)}")
+        if len(faces) == 0:
+            raise RuntimeError("No faces detected")
+
         landmarks_list = []
-        for face in faces:
-            landmarks = landmark_predictor(gray, face)
+        for (x, y, w, h) in faces:
+            rect = dlib.rectangle(x, y, x + w, y + h)
+            landmarks = landmark_predictor(gray, rect)
             landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
         return faces, landmarks_list
     except Exception as e:
@@ -123,7 +127,7 @@ def calculate_face_shape(landmarks, image):
         return "Square"
     elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
         return "Oval"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor):
         return "Round"
     else:
         return "Unknown"
