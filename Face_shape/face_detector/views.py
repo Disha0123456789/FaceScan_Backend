@@ -6,6 +6,7 @@ import numpy as np
 import os
 import json
 import logging
+import random  # Add this import
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -105,79 +106,30 @@ def detect_faces_landmarks(image):
             logger.info(f"Processing face with coordinates: x={x}, y={y}, w={w}, h={h}")
             rect = dlib.rectangle(x, y, x + w, y + h)
             logger.info(f"Created dlib.rectangle: [{rect.left()}, {rect.top()}, {rect.right()}, {rect.bottom()}]")
-
-            # Check if rectangle coordinates are valid
-            if rect.left() < 0 or rect.top() < 0 or rect.right() > gray.shape[1] or rect.bottom() > gray.shape[0]:
-                logger.error(f"Rectangle coordinates out of bounds: [{rect.left()}, {rect.top()}, {rect.right()}, {rect.bottom()}]")
-                continue  # Skip this face
-
-            try:
-                logger.info("Calling landmark_predictor")
-                # Convert image from BGR (OpenCV default) to RGB
-                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                logger.info(f"Image RGB shape: {image_rgb.shape}, dtype: {image_rgb.dtype}")
-
-                # Ensure the image is 8-bit RGB
-                if image_rgb.dtype != np.uint8 or len(image_rgb.shape) != 3 or image_rgb.shape[2] != 3:
-                    logger.error("RGB image is not 8-bit or not a 3-channel image.")
-                    raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
-
-                landmarks = landmark_predictor(image_rgb, rect)
-                logger.info("Landmark prediction successful")
-                landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
-            except Exception as e:
-                logger.error(f"Error in landmark prediction: {e}")
-                raise RuntimeError("Error in face detection or landmark prediction")
+            landmarks = landmark_predictor(image, rect)
+            landmarks_list.append(landmarks)
 
         return faces, landmarks_list
     except Exception as e:
         logger.error(f"Error in face detection or landmark prediction: {e}")
         raise RuntimeError("Error in face detection or landmark prediction")
 
-
 def calculate_face_shape(landmarks, image):
-    jawline_points = np.array(landmarks[4:13])
-    forehead_width = np.linalg.norm(np.array(landmarks[17]) - np.array(landmarks[26]))
-    jawline_width = np.linalg.norm(jawline_points[0] - jawline_points[-1])
-    cheekbones_width = np.linalg.norm(np.array(landmarks[2]) - np.array(landmarks[14]))
-    face_height = np.linalg.norm(np.array(landmarks[8]) - np.array(landmarks[25]))
-
-    standardized_height = 100.0
-    scale_factor = standardized_height / face_height
-    standardized_forehead_width = forehead_width * scale_factor
-    standardized_jawline_width = jawline_width * scale_factor
-    standardized_cheekbones_width = cheekbones_width * scale_factor
-
-    if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
-        return "Heart"
-    elif (abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and 
-          abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and 
-          abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and 
-          standardized_height > standardized_cheekbones_width + (17 * scale_factor)):
-        return "Oblong"
-    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and 
-          abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor)):
-        return "Square"
-    elif (standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and 
-          standardized_height > standardized_cheekbones_width + (20 * scale_factor)):
-        return "Oval"
-    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and 
-          standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor)):
-        return "Round"
-    else:
-        return "Unknown"
+    # Add your calculation logic here
+    pass
 
 def get_predictions(face_shape):
     with open(shapes_json_path) as f:
         shapes_data = json.load(f)
 
-    for shape_entry in shapes_data:
-        if shape_entry['face_shape'] == face_shape:
-            selected_predictions = {}
-            # Randomly select prediction type (prediction1, prediction2, prediction3)
+    for shape_entry in shapes_data['shapes']:
+        if shape_entry['shape'] == face_shape:
             prediction_type = random.choice(list(shape_entry['personal_traits'].keys()))
-            for category, predictions in shape_entry.items():
-                if category != 'face_shape':
-                    selected_predictions[category] = predictions[prediction_type]
-            return selected_predictions             
+            return {
+                'shape': face_shape,
+                'traits': shape_entry['personal_traits'][prediction_type]
+            }
+
     return None
+
+# Don't forget to import your additional necessary modules and define any additional functions
