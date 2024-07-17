@@ -25,12 +25,14 @@ SECRET_KEY = 'django-insecure-mxap26$g$#-!kt-+z7*^d7z18kpc7no@lm&5lr$_2ge6ysrp3x
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'divineconnection.co.in',
-    'www.divineconnection.co.in',
-]
+#ALLOWED_HOSTS = [
+#    'localhost',
+#   '127.0.0.1',
+#    'divineconnection.co.in',
+#    'www.divineconnection.co.in',
+#]
+
+ALLOWED_HOSTS = ['194.238.22.138', 'divineconnection.co.in', 'www.divineconnection.co.in', 'localhost', '127.0.0.1']
 
 
 
