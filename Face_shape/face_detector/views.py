@@ -113,7 +113,10 @@ def detect_faces_landmarks(image):
 
             try:
                 logger.info("Calling landmark_predictor")
-                landmarks = landmark_predictor(image, rect)
+                # Convert image from BGR (OpenCV default) to RGB
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                landmarks = landmark_predictor(image_rgb, rect)
+                #landmarks = landmark_predictor(image, rect)
                 logger.info("Landmark prediction successful")
                 landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
             except Exception as e:
