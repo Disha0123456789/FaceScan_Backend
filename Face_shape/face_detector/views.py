@@ -160,8 +160,8 @@ def calculate_face_shape(landmarks, image):
     elif (standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and 
           standardized_height > standardized_cheekbones_width + (20 * scale_factor)):
         return "Oval"
-    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale factor) and 
-          standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor)):
+    elif (abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and 
+          standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor)):
         return "Round"
     else:
         return "Unknown"
