@@ -117,9 +117,9 @@ def detect_faces_landmarks(image):
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 logger.info(f"Image RGB shape: {image_rgb.shape}, dtype: {image_rgb.dtype}")
 
-                # Check if the image is 8-bit RGB
-                if image_rgb.dtype != np.uint8 or image_rgb.shape[2] != 3:
-                    logger.error("Image RGB is not 8-bit or not a 3 channel image.")
+                # Ensure the image is 8-bit RGB
+                if image_rgb.dtype != np.uint8 or len(image_rgb.shape) != 3 or image_rgb.shape[2] != 3:
+                    logger.error("RGB image is not 8-bit or not a 3-channel image.")
                     raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
 
                 landmarks = landmark_predictor(image_rgb, rect)
@@ -133,6 +133,7 @@ def detect_faces_landmarks(image):
     except Exception as e:
         logger.error(f"Error in face detection or landmark prediction: {e}")
         raise RuntimeError("Error in face detection or landmark prediction")
+
 
 def calculate_face_shape(landmarks, image):
     jawline_points = np.array(landmarks[4:13])
