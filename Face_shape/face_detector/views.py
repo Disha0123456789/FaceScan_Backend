@@ -10,7 +10,6 @@ import logging
 
 # Configure logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,21 +47,20 @@ def upload_image(request):
             logger.error('Failed to read image.')
             os.remove(temp_image_path)
             return JsonResponse({'error': 'Failed to read image'}, status=400)
-        else:
-            logger.info(f"Image shape: {image.shape}")
 
+        logger.info(f"Image shape: {image.shape}")
+        
         # Detect faces and landmarks
         try:
             faces, landmarks_list = detect_faces_landmarks(image)
-        except Exception as e:
+            if not landmarks_list:
+                logger.error('No face detected.')
+                os.remove(temp_image_path)
+                return JsonResponse({'error': 'No face detected'}, status=400)
+        except RuntimeError as e:
             logger.error(f"Error in detecting faces/landmarks: {e}")
             os.remove(temp_image_path)
             return JsonResponse({'error': str(e)}, status=400)
-
-        if not landmarks_list:
-            logger.error('No face detected.')
-            os.remove(temp_image_path)
-            return JsonResponse({'error': 'No face detected'}, status=400)
 
         # Calculate face shape for the first detected face
         landmarks = landmarks_list[0]
@@ -85,29 +83,24 @@ def detect_faces_landmarks(image):
     if image is None:
         logger.error("Image is None, possibly due to incorrect file path or format.")
         raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
-    
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         logger.info(f"Converted image to grayscale: {gray.shape}, dtype: {gray.dtype}")
     except Exception as e:
         logger.error(f"Error converting image to gray: {e}")
         raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
-
-    # Check image type and dtype
-    logger.info(f"Image type: {type(gray)}, dtype: {gray.dtype}")
     
-    if gray.dtype != np.uint8:
-        logger.error("Image is not 8bit gray")
-        raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
-
-    faces = face_detector(gray)
-    logger.info(f"Detected {len(faces)} faces")
-    landmarks_list = []
-    for face in faces:
-        landmarks = landmark_predictor(gray, face)
-        landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
-    
-    return faces, landmarks_list
+    try:
+        faces = face_detector(gray)
+        logger.info(f"Faces detected: {len(faces)}")
+        landmarks_list = []
+        for face in faces:
+            landmarks = landmark_predictor(gray, face)
+            landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+        return faces, landmarks_list
+    except Exception as e:
+        logger.error(f"Error in face detection or landmark prediction: {e}")
+        raise RuntimeError("Error in face detection or landmark prediction")
 
 def calculate_face_shape(landmarks, image):
     jawline_points = np.array(landmarks[4:13])
