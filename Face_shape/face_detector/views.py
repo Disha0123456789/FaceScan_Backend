@@ -111,11 +111,6 @@ def detect_faces_landmarks(image):
                 logger.error(f"Rectangle coordinates out of bounds: [{rect.left()}, {rect.top()}, {rect.right()}, {rect.bottom()}]")
                 continue  # Skip this face
 
-            # Ensure `gray` is 8-bit grayscale before passing to landmark_predictor
-            if gray.dtype != np.uint8 or len(gray.shape) != 2:
-                logger.error("Invalid grayscale image format.")
-                raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
-
             try:
                 logger.info("Calling landmark_predictor")
                 landmarks = landmark_predictor(gray, rect)
