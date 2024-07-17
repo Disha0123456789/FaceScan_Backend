@@ -10,6 +10,7 @@ import logging
 
 # Configure logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,9 +48,17 @@ def upload_image(request):
             logger.error('Failed to read image.')
             os.remove(temp_image_path)
             return JsonResponse({'error': 'Failed to read image'}, status=400)
+        else:
+            logger.info(f"Image shape: {image.shape}")
 
         # Detect faces and landmarks
-        faces, landmarks_list = detect_faces_landmarks(image)
+        try:
+            faces, landmarks_list = detect_faces_landmarks(image)
+        except Exception as e:
+            logger.error(f"Error in detecting faces/landmarks: {e}")
+            os.remove(temp_image_path)
+            return JsonResponse({'error': str(e)}, status=400)
+
         if not landmarks_list:
             logger.error('No face detected.')
             os.remove(temp_image_path)
@@ -78,11 +87,13 @@ def detect_faces_landmarks(image):
         raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        logger.info(f"Converted image to grayscale: {gray.shape}")
     except Exception as e:
         logger.error(f"Error converting image to gray: {e}")
         raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
     
     faces = face_detector(gray)
+    logger.info(f"Detected {len(faces)} faces")
     landmarks_list = []
     for face in faces:
         landmarks = landmark_predictor(gray, face)
