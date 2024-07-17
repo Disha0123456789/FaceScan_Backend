@@ -113,7 +113,7 @@ def detect_faces_landmarks(image):
 
             try:
                 logger.info("Calling landmark_predictor")
-                landmarks = landmark_predictor(gray, rect)
+                landmarks = landmark_predictor(image, rect)
                 logger.info("Landmark prediction successful")
                 landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
             except Exception as e:
