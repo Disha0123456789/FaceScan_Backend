@@ -84,13 +84,14 @@ def detect_faces_landmarks(image):
     if image is None:
         logger.error("Image is None, possibly due to incorrect file path or format.")
         raise RuntimeError("Unsupported image type, must be 8bit gray or RGB image.")
+    
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         logger.info(f"Converted image to grayscale: {gray.shape}, dtype: {gray.dtype}")
     except Exception as e:
         logger.error(f"Error converting image to gray: {e}")
         raise RuntimeError(f"Unsupported image type, must be 8bit gray or RGB image: {e}")
-    
+
     try:
         faces = face_detector.detectMultiScale(gray, 1.1, 4)
         logger.info(f"Faces detected: {len(faces)}")
