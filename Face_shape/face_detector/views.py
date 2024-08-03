@@ -63,13 +63,21 @@ def upload_image(request):
         return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
 
 def detect_faces_landmarks(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    faces = face_detector(gray)
-    landmarks_list = []
-    for face in faces:
-        landmarks = landmark_predictor(gray, face)
-        landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
-    return faces, landmarks_list
+    try:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        logger.info(f"Image shape: {image.shape}")
+        faces = face_detector(gray)
+        landmarks_list = []
+        for face in faces:
+            landmarks = landmark_predictor(gray, face)
+            landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+        if not faces:
+            logger.warning("No faces detected in the image")
+        return faces, landmarks_list
+    except Exception as e:
+        logger.error(f"Error during face detection: {str(e)}")
+        return [], []
+
 
 def calculate_face_shape(landmarks, image):
     jawline_points = np.array(landmarks[4:13])
