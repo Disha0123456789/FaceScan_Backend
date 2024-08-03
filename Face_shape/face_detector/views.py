@@ -7,7 +7,7 @@ import os
 import json
 import random
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageResampling
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ def resize_and_compress_image(image, max_dimension=800, quality=85):
     if max(width, height) > max_dimension:
         scaling_factor = max_dimension / max(width, height)
         new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
-        pil_image = pil_image.resize(new_dimensions, Image.ANTIALIAS)
+        pil_image = pil_image.resize(new_dimensions, resample=ImageResampling.LANCZOS)
     
     # Compress image
     buffer = BytesIO()
