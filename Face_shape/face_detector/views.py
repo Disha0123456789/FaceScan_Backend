@@ -17,6 +17,16 @@ shapes_json_path = os.path.join(BASE_DIR, 'shapes.json')
 face_detector = dlib.get_frontal_face_detector()
 landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
+def resize_image(image, max_dimension=800):
+    """Resize image to a maximum dimension while maintaining aspect ratio."""
+    height, width = image.shape[:2]
+    if max(height, width) > max_dimension:
+        scaling_factor = max_dimension / max(height, width)
+        new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
+        resized_image = cv2.resize(image, new_dimensions, interpolation=cv2.INTER_AREA)
+        return resized_image
+    return image
+
 @csrf_exempt
 def upload_image(request):
     try:
@@ -34,6 +44,13 @@ def upload_image(request):
 
             # Read the image with OpenCV
             image = cv2.imread(temp_image_path)
+            if image is None:
+                print("Error: Image not read correctly")
+                return JsonResponse({'error': 'Image not read correctly'}, status=400)
+
+            # Resize the image
+            image = resize_image(image)
+            print(f"Image shape: {image.shape}")
 
             # Detect faces and landmarks
             faces, landmarks_list = detect_faces_landmarks(image)
@@ -44,8 +61,6 @@ def upload_image(request):
             # Calculate face shape for the first detected face
             landmarks = landmarks_list[0]
             face_shape = calculate_face_shape(landmarks, image)
-
-            # Print the detected face shape
             print(f"Detected face shape: {face_shape}")
 
             # Get predictions from shapes.json
