@@ -57,25 +57,27 @@ def upload_image(request):
     except Exception as e:
         return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
-def resize_and_compress_image(image, max_dimension=800, quality=85):
+def resize_and_compress_image(pil_image, max_dimension=600, quality=30):
     """Resize and compress image to a maximum dimension and quality."""
     try:
-        pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # Resize image while maintaining aspect ratio
         width, height = pil_image.size
         scaling_factor = max_dimension / max(width, height)
         if scaling_factor < 1:
             new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
             pil_image = pil_image.resize(new_dimensions, Image.LANCZOS)
 
+        # Compress image with aggressive settings
         buffer = BytesIO()
-        pil_image.save(buffer, format="JPEG", quality=quality)
+        pil_image.save(buffer, format="JPEG", quality=quality, optimize=True)
         buffer.seek(0)
-        
-        compressed_image = np.asarray(Image.open(buffer))
-        return cv2.cvtColor(compressed_image, cv2.COLOR_RGB2BGR)
+
+        # Return the resized and compressed image
+        return Image.open(buffer)
     except Exception as e:
         print(f"Error during resizing/compression: {str(e)}")
         return None
+
 
 def detect_faces_landmarks(image):
     """Detect faces and landmarks in an image."""
