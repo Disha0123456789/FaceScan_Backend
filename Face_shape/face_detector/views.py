@@ -30,19 +30,12 @@ def upload_image(request):
 
     # Save and process the uploaded image
     try:
-        temp_image_path = 'temp_image.jpg'
-        with open(temp_image_path, 'wb') as f:
-            for chunk in image_file.chunks():
-                f.write(chunk)
-
-        image = cv2.imread(temp_image_path)
-        if image is None:
-            return JsonResponse({'error': 'Image not read correctly'}, status=400)
-
+        image = Image.open(image_file)
         image = resize_and_compress_image(image)
-        if image is None:
-            return JsonResponse({'error': 'Image resizing/compression failed'}, status=400)
 
+        # Convert the image to OpenCV format
+        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        
         faces, landmarks_list = detect_faces_landmarks(image)
         if not landmarks_list:
             return JsonResponse({'error': 'No face detected'}, status=400)
@@ -57,7 +50,7 @@ def upload_image(request):
     except Exception as e:
         return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
-def resize_and_compress_image(pil_image, max_dimension=600, quality=30):
+def resize_and_compress_image(pil_image, max_dimension=800, quality=75):
     """Resize and compress image to a maximum dimension and quality."""
     try:
         # Resize image while maintaining aspect ratio
@@ -67,7 +60,7 @@ def resize_and_compress_image(pil_image, max_dimension=600, quality=30):
             new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
             pil_image = pil_image.resize(new_dimensions, Image.LANCZOS)
 
-        # Compress image with aggressive settings
+        # Compress image
         buffer = BytesIO()
         pil_image.save(buffer, format="JPEG", quality=quality, optimize=True)
         buffer.seek(0)
@@ -77,7 +70,6 @@ def resize_and_compress_image(pil_image, max_dimension=600, quality=30):
     except Exception as e:
         print(f"Error during resizing/compression: {str(e)}")
         return None
-
 
 def detect_faces_landmarks(image):
     """Detect faces and landmarks in an image."""
