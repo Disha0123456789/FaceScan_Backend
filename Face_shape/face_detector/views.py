@@ -6,8 +6,8 @@ import numpy as np
 import os
 import json
 import random
-from io import BytesIO
 from PIL import Image
+from io import BytesIO
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,94 +19,80 @@ shapes_json_path = os.path.join(BASE_DIR, 'shapes.json')
 face_detector = dlib.get_frontal_face_detector()
 landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
-def resize_and_compress_image(image, max_dimension=800, quality=85):
-    """Resize and compress image to a maximum dimension and quality."""
-    # Convert OpenCV image (BGR) to PIL image (RGB)
-    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    
-    # Resize image
-    width, height = pil_image.size
-    if max(width, height) > max_dimension:
-        scaling_factor = max_dimension / max(width, height)
-        new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
-        pil_image = pil_image.resize(new_dimensions, resample=Image.Resampling.LANCZOS)
-    
-    # Compress image
-    buffer = BytesIO()
-    pil_image.save(buffer, format="JPEG", quality=quality)
-    buffer.seek(0)
-    
-    # Convert buffer back to OpenCV image
-    compressed_image = np.asarray(Image.open(buffer))
-    return cv2.cvtColor(compressed_image, cv2.COLOR_RGB2BGR)
-
 @csrf_exempt
 def upload_image(request):
-    try:
-        if request.method == 'POST':
-            image_file = request.FILES.get('imagefile', None)
-            if not image_file:
-                print("Error: No image uploaded")
-                return JsonResponse({'error': 'No image uploaded'}, status=400)
-
-            # Save the uploaded image temporarily
-            temp_image_path = 'temp_image.jpg'
-            with open(temp_image_path, 'wb') as f:
-                for chunk in image_file.chunks():
-                    f.write(chunk)
-
-            # Read the image with OpenCV
-            image = cv2.imread(temp_image_path)
-            if image is None:
-                print("Error: Image not read correctly")
-                return JsonResponse({'error': 'Image not read correctly'}, status=400)
-
-            # Resize and compress the image
-            image = resize_and_compress_image(image)
-            print(f"Image shape: {image.shape}")
-
-            # Detect faces and landmarks
-            faces, landmarks_list = detect_faces_landmarks(image)
-            if not landmarks_list:
-                print("Error: No face detected in the uploaded image")
-                return JsonResponse({'error': 'No face detected'}, status=400)
-
-            # Calculate face shape for the first detected face
-            landmarks = landmarks_list[0]
-            face_shape = calculate_face_shape(landmarks, image)
-            print(f"Detected face shape: {face_shape}")
-
-            # Get predictions from shapes.json
-            predictions = get_predictions(face_shape)
-            if predictions:
-                return JsonResponse(predictions)
-            else:
-                print("Error: Face shape not found in shapes.json")
-                return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
-
+    if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=405)
-    
+
+    image_file = request.FILES.get('imagefile')
+    if not image_file:
+        return JsonResponse({'error': 'No image uploaded'}, status=400)
+
+    # Save and process the uploaded image
+    try:
+        temp_image_path = 'temp_image.jpg'
+        with open(temp_image_path, 'wb') as f:
+            for chunk in image_file.chunks():
+                f.write(chunk)
+
+        image = cv2.imread(temp_image_path)
+        if image is None:
+            return JsonResponse({'error': 'Image not read correctly'}, status=400)
+
+        image = resize_and_compress_image(image)
+        if image is None:
+            return JsonResponse({'error': 'Image resizing/compression failed'}, status=400)
+
+        faces, landmarks_list = detect_faces_landmarks(image)
+        if not landmarks_list:
+            return JsonResponse({'error': 'No face detected'}, status=400)
+
+        face_shape = calculate_face_shape(landmarks_list[0], image)
+        predictions = get_predictions(face_shape)
+        if predictions:
+            return JsonResponse(predictions)
+        else:
+            return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
+
     except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+        return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+
+def resize_and_compress_image(image, max_dimension=800, quality=85):
+    """Resize and compress image to a maximum dimension and quality."""
+    try:
+        pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        width, height = pil_image.size
+        scaling_factor = max_dimension / max(width, height)
+        if scaling_factor < 1:
+            new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
+            pil_image = pil_image.resize(new_dimensions, Image.LANCZOS)
+
+        buffer = BytesIO()
+        pil_image.save(buffer, format="JPEG", quality=quality)
+        buffer.seek(0)
+        
+        compressed_image = np.asarray(Image.open(buffer))
+        return cv2.cvtColor(compressed_image, cv2.COLOR_RGB2BGR)
+    except Exception as e:
+        print(f"Error during resizing/compression: {str(e)}")
+        return None
 
 def detect_faces_landmarks(image):
+    """Detect faces and landmarks in an image."""
     try:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        print(f"Image shape: {image.shape}")
         faces = face_detector(gray)
-        landmarks_list = []
-        for face in faces:
-            landmarks = landmark_predictor(gray, face)
-            landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
-        if not faces:
-            print("Warning: No faces detected in the image")
+        landmarks_list = [
+            [(p.x, p.y) for p in landmark_predictor(gray, face).parts()]
+            for face in faces
+        ]
         return faces, landmarks_list
     except Exception as e:
         print(f"Error during face detection: {str(e)}")
         return [], []
 
 def calculate_face_shape(landmarks, image):
+    """Calculate face shape based on landmarks."""
     try:
         jawline_points = np.array(landmarks[4:13])
         forehead_width = np.linalg.norm(np.array(landmarks[17]) - np.array(landmarks[26]))
@@ -137,22 +123,17 @@ def calculate_face_shape(landmarks, image):
         return "Unknown"
 
 def get_predictions(face_shape):
+    """Retrieve predictions based on detected face shape."""
     try:
         with open(shapes_json_path) as f:
             shapes_data = json.load(f)
 
         for shape_entry in shapes_data:
             if shape_entry['face_shape'] == face_shape:
-                selected_predictions = {}
-                # Randomly select prediction type (prediction1, prediction2, prediction3)
                 prediction_type = random.choice(list(shape_entry['personal_traits'].keys()))
-                for category, predictions in shape_entry.items():
-                    if category != 'face_shape':
-                        selected_predictions[category] = predictions[prediction_type]
-                return selected_predictions
-        print("Error: Face shape not found in shapes.json")
+                return {category: predictions[prediction_type] for category, predictions in shape_entry.items() if category != 'face_shape'}
+        
         return None
-
     except Exception as e:
         print(f"Error reading shapes.json: {str(e)}")
         return None
