@@ -19,37 +19,48 @@ landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
 @csrf_exempt
 def upload_image(request):
-    if request.method == 'POST':
-        image_file = request.FILES.get('imagefile', None)
-        if not image_file:
-            return JsonResponse({'error': 'No image uploaded'}, status=400)
+    try:
+        if request.method == 'POST':
+            image_file = request.FILES.get('imagefile', None)
+            if not image_file:
+                print("Error: No image uploaded")
+                return JsonResponse({'error': 'No image uploaded'}, status=400)
 
-        # Save the uploaded image temporarily
-        temp_image_path = 'temp_image.jpg'
-        with open(temp_image_path, 'wb') as f:
-            for chunk in image_file.chunks():
-                f.write(chunk)
+            # Save the uploaded image temporarily
+            temp_image_path = 'temp_image.jpg'
+            with open(temp_image_path, 'wb') as f:
+                for chunk in image_file.chunks():
+                    f.write(chunk)
 
-        # Read the image with OpenCV
-        image = cv2.imread(temp_image_path)
+            # Read the image with OpenCV
+            image = cv2.imread(temp_image_path)
 
-        # Detect faces and landmarks
-        faces, landmarks_list = detect_faces_landmarks(image)
-        if not landmarks_list:
-            return JsonResponse({'error': 'No face detected'}, status=400)
+            # Detect faces and landmarks
+            faces, landmarks_list = detect_faces_landmarks(image)
+            if not landmarks_list:
+                print("Error: No face detected in the uploaded image")
+                return JsonResponse({'error': 'No face detected'}, status=400)
 
-        # Calculate face shape for the first detected face
-        landmarks = landmarks_list[0]
-        face_shape = calculate_face_shape(landmarks, image)
+            # Calculate face shape for the first detected face
+            landmarks = landmarks_list[0]
+            face_shape = calculate_face_shape(landmarks, image)
 
-        # Get predictions from shapes.json
-        predictions = get_predictions(face_shape)
-        if predictions:
-            return JsonResponse(predictions)
-        else:
-            return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
+            # Log the detected face shape
+            print(f"Detected face shape: {face_shape}")
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            # Get predictions from shapes.json
+            predictions = get_predictions(face_shape)
+            if predictions:
+                return JsonResponse(predictions)
+            else:
+                print("Error: Face shape not found in shapes.json")
+                return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
+
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+    except Exception as e:
+        print(f"An unexpected error occurred: {str(e)}")
+        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
 
 def detect_faces_landmarks(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -77,11 +88,11 @@ def calculate_face_shape(landmarks, image):
         return "Heart"
     elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
         return "Oblong"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale factor):
         return "Square"
     elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
         return "Oval"
-    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale factor):
         return "Round"
     else:
         return "Unknown"
