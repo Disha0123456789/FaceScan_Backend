@@ -6,6 +6,8 @@ import numpy as np
 import os
 import json
 import random
+from io import BytesIO
+from PIL import Image
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,15 +19,26 @@ shapes_json_path = os.path.join(BASE_DIR, 'shapes.json')
 face_detector = dlib.get_frontal_face_detector()
 landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
-def resize_image(image, max_dimension=800):
-    """Resize image to a maximum dimension while maintaining aspect ratio."""
-    height, width = image.shape[:2]
-    if max(height, width) > max_dimension:
-        scaling_factor = max_dimension / max(height, width)
+def resize_and_compress_image(image, max_dimension=800, quality=85):
+    """Resize and compress image to a maximum dimension and quality."""
+    # Convert OpenCV image (BGR) to PIL image (RGB)
+    pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    
+    # Resize image
+    width, height = pil_image.size
+    if max(width, height) > max_dimension:
+        scaling_factor = max_dimension / max(width, height)
         new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
-        resized_image = cv2.resize(image, new_dimensions, interpolation=cv2.INTER_AREA)
-        return resized_image
-    return image
+        pil_image = pil_image.resize(new_dimensions, Image.ANTIALIAS)
+    
+    # Compress image
+    buffer = BytesIO()
+    pil_image.save(buffer, format="JPEG", quality=quality)
+    buffer.seek(0)
+    
+    # Convert buffer back to OpenCV image
+    compressed_image = np.asarray(Image.open(buffer))
+    return cv2.cvtColor(compressed_image, cv2.COLOR_RGB2BGR)
 
 @csrf_exempt
 def upload_image(request):
@@ -48,8 +61,8 @@ def upload_image(request):
                 print("Error: Image not read correctly")
                 return JsonResponse({'error': 'Image not read correctly'}, status=400)
 
-            # Resize the image
-            image = resize_image(image)
+            # Resize and compress the image
+            image = resize_and_compress_image(image)
             print(f"Image shape: {image.shape}")
 
             # Detect faces and landmarks
