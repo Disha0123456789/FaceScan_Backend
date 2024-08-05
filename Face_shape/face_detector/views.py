@@ -7,8 +7,6 @@ import os
 import json
 import random
 from PIL import Image
-from io import BytesIO
-from django.core.files.uploadhandler import TemporaryFileUploadHandler
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -23,19 +21,22 @@ landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 @csrf_exempt
 def upload_image(request):
     if request.method == 'POST':
-        request.upload_handlers.insert(0, TemporaryFileUploadHandler())  # Handle large files
         image_file = request.FILES.get('imagefile', None)
         if not image_file:
             return JsonResponse({'error': 'No image uploaded'}, status=400)
 
         # Save the uploaded image temporarily
-        temp_image_path = 'temp_image.jpg'
+        temp_image_path = os.path.join(BASE_DIR, 'temp_image.jpg')
         with open(temp_image_path, 'wb') as f:
             for chunk in image_file.chunks():
                 f.write(chunk)
 
+        # Resize and compress the image
+        resized_image_path = os.path.join(BASE_DIR, 'resized_image.jpg')
+        resize_and_compress_image(temp_image_path, resized_image_path)
+
         # Read the image with OpenCV
-        image = cv2.imread(temp_image_path)
+        image = cv2.imread(resized_image_path)
 
         # Detect faces and landmarks
         faces, landmarks_list = detect_faces_landmarks(image)
@@ -55,84 +56,54 @@ def upload_image(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-def resize_and_compress_image(pil_image, max_dimension=800, quality=75):
-    """Resize and compress image to a maximum dimension and quality."""
-    try:
-        # Resize image while maintaining aspect ratio
-        width, height = pil_image.size
-        scaling_factor = max_dimension / max(width, height)
-        if scaling_factor < 1:
-            new_dimensions = (int(width * scaling_factor), int(height * scaling_factor))
-            pil_image = pil_image.resize(new_dimensions, Image.LANCZOS)
-
-        # Compress image
-        buffer = BytesIO()
-        pil_image.save(buffer, format="JPEG", quality=quality, optimize=True)
-        buffer.seek(0)
-
-        # Return the resized and compressed image
-        return Image.open(buffer)
-    except Exception as e:
-        print(f"Error during resizing/compression: {str(e)}")
-        return None
+def resize_and_compress_image(image_path, output_path, max_width=800, max_height=800):
+    with Image.open(image_path) as img:
+        img.thumbnail((max_width, max_height))
+        img.save(output_path, quality=85)
 
 def detect_faces_landmarks(image):
-    """Detect faces and landmarks in an image."""
-    try:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = face_detector(gray)
-        landmarks_list = [
-            [(p.x, p.y) for p in landmark_predictor(gray, face).parts()]
-            for face in faces
-        ]
-        return faces, landmarks_list
-    except Exception as e:
-        print(f"Error during face detection: {str(e)}")
-        return [], []
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    faces = face_detector(gray)
+    landmarks_list = []
+    for face in faces:
+        landmarks = landmark_predictor(gray, face)
+        landmarks_list.append([(p.x, p.y) for p in landmarks.parts()])
+    return faces, landmarks_list
 
 def calculate_face_shape(landmarks, image):
-    """Calculate face shape based on landmarks."""
-    try:
-        jawline_points = np.array(landmarks[4:13])
-        forehead_width = np.linalg.norm(np.array(landmarks[17]) - np.array(landmarks[26]))
-        jawline_width = np.linalg.norm(jawline_points[0] - jawline_points[-1])
-        cheekbones_width = np.linalg.norm(np.array(landmarks[2]) - np.array(landmarks[14]))
-        face_height = np.linalg.norm(np.array(landmarks[8]) - np.array(landmarks[25]))
+    jawline_points = np.array(landmarks[4:13])
+    forehead_width = np.linalg.norm(np.array(landmarks[17]) - np.array(landmarks[26]))
+    jawline_width = np.linalg.norm(jawline_points[0] - jawline_points[-1])
+    cheekbones_width = np.linalg.norm(np.array(landmarks[2]) - np.array(landmarks[14]))
+    face_height = np.linalg.norm(np.array(landmarks[8]) - np.array(landmarks[25]))
 
-        standardized_height = 100.0
-        scale_factor = standardized_height / face_height
-        standardized_forehead_width = forehead_width * scale_factor
-        standardized_jawline_width = jawline_width * scale_factor
-        standardized_cheekbones_width = cheekbones_width * scale_factor
+    standardized_height = 100.0
+    scale_factor = standardized_height / face_height
+    standardized_forehead_width = forehead_width * scale_factor
+    standardized_jawline_width = jawline_width * scale_factor
+    standardized_cheekbones_width = cheekbones_width * scale_factor
 
-        if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
-            return "Heart"
-        elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
-            return "Oblong"
-        elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
-            return "Square"
-        elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
-            return "Oval"
-        elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
-            return "Round"
-        else:
-            return "Unknown"
-    except Exception as e:
-        print(f"Error calculating face shape: {str(e)}")
+    if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
+        return "Heart"
+    elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
+        return "Oblong"
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
+        return "Square"
+    elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
+        return "Oval"
+    elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
+        return "Round"
+    else:
         return "Unknown"
 
 def get_predictions(face_shape):
-    """Retrieve predictions based on detected face shape."""
-    try:
-        with open(shapes_json_path) as f:
-            shapes_data = json.load(f)
+    with open(shapes_json_path) as f:
+        shapes_data = json.load(f)
 
-        for shape_entry in shapes_data:
-            if shape_entry['face_shape'] == face_shape:
-                prediction_type = random.choice(list(shape_entry['personal_traits'].keys()))
-                return {category: predictions[prediction_type] for category, predictions in shape_entry.items() if category != 'face_shape'}
-        
-        return None
-    except Exception as e:
-        print(f"Error reading shapes.json: {str(e)}")
-        return None
+    for shape_entry in shapes_data:
+        if shape_entry["shape"] == face_shape:
+            predictions = shape_entry.get("predictions", {})
+            selected_predictions = random.sample(predictions, min(3, len(predictions)))
+            return {"predictions": selected_predictions}
+
+    return None
