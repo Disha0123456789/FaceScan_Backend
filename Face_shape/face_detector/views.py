@@ -101,9 +101,12 @@ def get_predictions(face_shape):
         shapes_data = json.load(f)
 
     for shape_entry in shapes_data:
-        if shape_entry["shape"] == face_shape:
-            predictions = shape_entry.get("predictions", {})
-            selected_predictions = random.sample(predictions, min(3, len(predictions)))
-            return {"predictions": selected_predictions}
-
+        if shape_entry['face_shape'] == face_shape:
+            selected_predictions = {}
+            # Randomly select prediction type (prediction1, prediction2, prediction3)
+            prediction_type = random.choice(list(shape_entry['personal_traits'].keys()))
+            for category, predictions in shape_entry.items():
+                if category != 'face_shape':
+                    selected_predictions[category] = predictions[prediction_type]
+            return selected_predictions
     return None
