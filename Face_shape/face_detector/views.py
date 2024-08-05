@@ -97,7 +97,7 @@ def calculate_face_shape(landmarks, image):
         face_shape = "Unknown"
     
     # Log the shape of the face to the console
-    print(f"Detected face shape: {face_shape}")
+    #print(f"Detected face shape: {face_shape}")
     
     return face_shape
 
