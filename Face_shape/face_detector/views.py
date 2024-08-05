@@ -8,7 +8,6 @@ import json
 import random
 from PIL import Image
 from io import BytesIO
-from django.core.files.uploadhandler import TemporaryFileUploadHandler
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +22,6 @@ landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 @csrf_exempt
 def upload_image(request):
     if request.method == 'POST':
-        request.upload_handlers.insert(0, TemporaryFileUploadHandler())  # Handle large files
         image_file = request.FILES.get('imagefile', None)
         if not image_file:
             return JsonResponse({'error': 'No image uploaded'}, status=400)
