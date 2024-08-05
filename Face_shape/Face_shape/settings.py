@@ -64,7 +64,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'Face_shape.urls'
 #CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Add your frontend URL here
+    "http://localhost:5173",  # Add your frontend URL here
     "https://divineconnection.co.in",  # Your frontend URL
 ]
 
