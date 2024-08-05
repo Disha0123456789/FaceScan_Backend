@@ -84,17 +84,22 @@ def calculate_face_shape(landmarks, image):
     standardized_cheekbones_width = cheekbones_width * scale_factor
 
     if standardized_cheekbones_width > standardized_forehead_width + (20 * scale_factor) and standardized_forehead_width > standardized_jawline_width + (15 * scale_factor):
-        return "Heart"
+        face_shape = "Heart"
     elif abs(standardized_forehead_width - standardized_cheekbones_width) <= (20 * scale_factor) and abs(standardized_forehead_width - standardized_jawline_width) <= (20 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (20 * scale_factor) and standardized_height > standardized_cheekbones_width + (17 * scale_factor):
-        return "Oblong"
+        face_shape = "Oblong"
     elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and abs(standardized_cheekbones_width - standardized_jawline_width) <= (37 * scale_factor):
-        return "Square"
+        face_shape = "Square"
     elif standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (25 * scale_factor) and standardized_height > standardized_cheekbones_width + (20 * scale_factor):
-        return "Oval"
+        face_shape = "Oval"
     elif abs(standardized_forehead_width - standardized_jawline_width) <= (30 * scale_factor) and standardized_cheekbones_width - max(standardized_forehead_width, standardized_jawline_width) > (20 * scale_factor):
-        return "Round"
+        face_shape = "Round"
     else:
-        return "Unknown"
+        face_shape = "Unknown"
+    
+    # Log the shape of the face to the console
+    print(f"Detected face shape: {face_shape}")
+    
+    return face_shape
 
 def get_predictions(face_shape):
     with open(shapes_json_path) as f:
