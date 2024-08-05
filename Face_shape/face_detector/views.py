@@ -8,6 +8,7 @@ import json
 import random
 from PIL import Image
 from io import BytesIO
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
 
 # Define the path to the models and JSON file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,34 +22,38 @@ landmark_predictor = dlib.shape_predictor(shape_predictor_path)
 
 @csrf_exempt
 def upload_image(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    if request.method == 'POST':
+        request.upload_handlers.insert(0, TemporaryFileUploadHandler())  # Handle large files
+        image_file = request.FILES.get('imagefile', None)
+        if not image_file:
+            return JsonResponse({'error': 'No image uploaded'}, status=400)
 
-    image_file = request.FILES.get('imagefile')
-    if not image_file:
-        return JsonResponse({'error': 'No image uploaded'}, status=400)
+        # Save the uploaded image temporarily
+        temp_image_path = 'temp_image.jpg'
+        with open(temp_image_path, 'wb') as f:
+            for chunk in image_file.chunks():
+                f.write(chunk)
 
-    # Save and process the uploaded image
-    try:
-        image = Image.open(image_file)
-        image = resize_and_compress_image(image)
+        # Read the image with OpenCV
+        image = cv2.imread(temp_image_path)
 
-        # Convert the image to OpenCV format
-        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        
+        # Detect faces and landmarks
         faces, landmarks_list = detect_faces_landmarks(image)
         if not landmarks_list:
             return JsonResponse({'error': 'No face detected'}, status=400)
 
-        face_shape = calculate_face_shape(landmarks_list[0], image)
+        # Calculate face shape for the first detected face
+        landmarks = landmarks_list[0]
+        face_shape = calculate_face_shape(landmarks, image)
+
+        # Get predictions from shapes.json
         predictions = get_predictions(face_shape)
         if predictions:
             return JsonResponse(predictions)
         else:
             return JsonResponse({'error': 'Face shape not found in shapes.json'}, status=404)
 
-    except Exception as e:
-        return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def resize_and_compress_image(pil_image, max_dimension=800, quality=75):
     """Resize and compress image to a maximum dimension and quality."""
